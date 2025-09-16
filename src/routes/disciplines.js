@@ -58,11 +58,56 @@ router.get('/:id', async (req, res) => {
 
 /**
  * @swagger
+ * /disciplines/{id}/classes/{classNumber}:
+ *   get:
+ *     summary: Returns a specific class from a discipline.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: The ID of the discipline.
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: classNumber
+ *         required: true
+ *         description: The number of the class.
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: The specific class from the discipline.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Class'
+ *       404:
+ *         description: Discipline or class not found.
+ */
+router.get('/:id/classes/:classNumber', async (req, res) => {
+    const { id, classNumber } = req.params;
+    const discipline = await getDisciplineById(id);
+
+    if (!discipline) {
+        return res.status(404).send({ error: 'Discipline not found' });
+    }
+
+    const classInfo = discipline.classes.find(c => c.number === classNumber);
+
+    if (!classInfo) {
+        return res.status(404).send({ error: 'Class not found' });
+    }
+
+    res.send(classInfo);
+});
+
+/**
+ * @swagger
  * /disciplines/actions/scrape:
  *   post:
  *     summary: Forces an update of the disciplines database by scraping data from Aluno Online.
  *     responses:
- *       200:
+ *       202:
  *         description: Disciplines update process started.
  */
 router.post('/actions/scrape', async (req, res) => {
