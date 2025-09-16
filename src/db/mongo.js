@@ -1,7 +1,7 @@
 import { MongoClient } from "mongodb";
 import 'dotenv/config';
 
-const dbName = "ccompUerjProgress";
+const dbName = "uerjScrapingDatabase";
 const disciplinesCollectionName = "disciplines";
 const studentsCollectionName = "students";
 
@@ -204,7 +204,7 @@ async function updateCurrentDisciplines({ studentId, add, remove }) {
 async function updateWhatsappGroup({ disciplineId, classNumber, whatsappGroup }) {
     try {
         const result = await disciplinesCollection.updateOne(
-            { disciplineId: disciplineId, "classes.number": classNumber },
+            { disciplineId: disciplineId, "classes.number": parseInt(classNumber, 10) },
             { $set: { "classes.$.whatsappGroup": whatsappGroup } }
         );
         console.log(`Discipline ${disciplineId}, Class ${classNumber} updated with new WhatsApp group.`);

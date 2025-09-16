@@ -92,7 +92,7 @@ router.get('/:id/classes/:classNumber', async (req, res) => {
         return res.status(404).send({ error: 'Discipline not found' });
     }
 
-    const classInfo = discipline.classes.find(c => c.number === classNumber);
+    const classInfo = discipline.classes.find(c => String(c.number) === classNumber);
 
     if (!classInfo) {
         return res.status(404).send({ error: 'Class not found' });
