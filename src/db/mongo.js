@@ -1,7 +1,7 @@
 import { MongoClient } from "mongodb";
 import 'dotenv/config';
 
-const dbName = "uerjScrapingDatabase";
+const dbName = "ccompUerjProgress";
 const disciplinesCollectionName = "disciplines";
 const studentsCollectionName = "students";
 
