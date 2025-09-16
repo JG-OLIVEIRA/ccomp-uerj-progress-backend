@@ -2,6 +2,7 @@ import express from 'express';
 import {
     createStudent,
     getStudentById,
+    updateStudent,
     updateCompletedDisciplines,
     updateCurrentDisciplines,
     deleteStudent,
@@ -203,6 +204,51 @@ router.post('/', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /students/{studentId}:
+ *   patch:
+ *     summary: Partially updates a student's information (name and/or lastName).
+ *     parameters:
+ *       - in: path
+ *         name: studentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: 'John'
+ *               lastName:
+ *                 type: string
+ *                 example: 'Doe'
+ *     responses:
+ *       200:
+ *         description: Student updated successfully.
+ *       404:
+ *         description: Student not found.
+ *       500:
+ *         description: Error updating the student.
+ */
+router.patch('/:studentId', async (req, res) => {
+    const { studentId } = req.params;
+    const { name, lastName } = req.body;
+
+    try {
+        const result = await updateStudent({ studentId, name, lastName });
+        if (result.matchedCount === 0) {
+            return res.status(404).send({ error: 'Student not found' });
+        }
+        res.status(200).send({ message: `Student ${studentId} updated successfully` });
+    } catch (error) {
+        res.status(500).send({ error: 'Error updating student', details: error.message });
+    }
+});
 
 
 /**

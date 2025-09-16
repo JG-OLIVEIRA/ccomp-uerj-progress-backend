@@ -113,6 +113,24 @@ async function getStudentById(studentId) {
     }
 }
 
+async function updateStudent({ studentId, name, lastName }) {
+    try {
+        const updates = {};
+        if (name) updates.name = name;
+        if (lastName) updates.lastName = lastName;
+
+        const result = await studentsCollection.updateOne(
+            { studentId: studentId },
+            { $set: updates }
+        );
+        console.log(`Student ${studentId} updated.`);
+        return result;
+    } catch (err) {
+        console.error(`Error updating student: ${err}`);
+        throw err;
+    }
+}
+
 async function updateCompletedDisciplines({ studentId, add, remove }) {
     try {
         if ((!add || add.length === 0) && (!remove || remove.length === 0)) {
@@ -226,4 +244,4 @@ async function deleteStudent(studentId) {
     }
 }
 
-export { initMongo, upsertDiscipline, getAllDisciplines, getDisciplineById, createStudent, getStudentById, updateCompletedDisciplines, updateWhatsappGroup, updateCurrentDisciplines, deleteStudent };
+export { initMongo, upsertDiscipline, getAllDisciplines, getDisciplineById, createStudent, getStudentById, updateStudent, updateCompletedDisciplines, updateWhatsappGroup, updateCurrentDisciplines, deleteStudent };
