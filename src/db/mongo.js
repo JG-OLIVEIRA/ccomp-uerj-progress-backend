@@ -175,43 +175,24 @@ async function updateCompletedDisciplines({ studentId, add, remove }) {
     }
 }
 
-async function updateCurrentDisciplines({ studentId, add, remove }) {
+async function updateCurrentDisciplines({ studentId, disciplineId, classNumber, action }) {
     try {
-        if ((!add || add.length === 0) && (!remove || remove.length === 0)) {
-            console.log(`No changes for student ${studentId}`);
-            return { matchedCount: 1, modifiedCount: 0 };
-        }
+        const classEnrollment = {
+            disciplineId: disciplineId,
+            classNumber: parseInt(classNumber, 10)
+        };
 
-        const allDisciplineIds = (add || []).concat(remove || []);
-        const invalidIds = allDisciplineIds.filter(id => typeof id !== 'string' || !/^[\w-]+$/.test(id));
-
-        if (invalidIds.length > 0) {
-            throw new Error(`Invalid discipline IDs: ${invalidIds.join(', ')}`);
-        }
-
-        let disciplinesExpr = { $ifNull: ["$currentDisciplines", []] };
-
-        if (add && add.length > 0) {
-            disciplinesExpr = { $setUnion: [disciplinesExpr, add] };
-        }
-
-        if (remove && remove.length > 0) {
-            disciplinesExpr = {
-                $filter: {
-                    input: disciplinesExpr,
-                    as: "discipline",
-                    cond: { $not: { $in: ["$$discipline", remove] } }
-                }
-            };
-        }
-
-        const updatePipeline = [{ $set: { currentDisciplines: disciplinesExpr } }];
+        const updateQuery = action === 'add'
+            ? { $addToSet: { currentDisciplines: classEnrollment } } // Use $addToSet to prevent duplicates
+            : { $pull: { currentDisciplines: classEnrollment } }; // Use $pull to remove the specific object
 
         const result = await studentsCollection.updateOne(
             { studentId: studentId },
-            updatePipeline
+            updateQuery
         );
-        console.log(`Student ${studentId} current disciplines updated.`);
+        
+        const actionText = action === 'add' ? 'added' : 'removed';
+        console.log(`Enrollment for Student ${studentId} in Discipline ${disciplineId}, Class ${classNumber} ${actionText}.`);
         return result;
     } catch (err) {
         console.error(`Error updating current disciplines: ${err}`);

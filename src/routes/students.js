@@ -82,13 +82,25 @@ router.get('/:studentId/disciplines', async (req, res) => {
     const disciplines = await getAllDisciplines();
     const disciplinesWithStatus = disciplines.map(discipline => {
         let status = 'not_taken';
+        // Check if the discipline is in the completed list
         if (student.completedDisciplines.includes(discipline.disciplineId)) {
             status = 'completed';
-        } else if (student.currentDisciplines.includes(discipline.disciplineId)) {
+        // Check if the discipline is in any of the current enrollments
+        } else if (student.currentDisciplines && student.currentDisciplines.some(enrollment => enrollment.disciplineId === discipline.disciplineId)) {
             status = 'in_progress';
         }
-        // Return a new object with the status property
-        return { ...JSON.parse(JSON.stringify(discipline)), status };
+
+        // Find the specific enrollment to get the class number, if it exists
+        const currentEnrollment = student.currentDisciplines?.find(enrollment => enrollment.disciplineId === discipline.disciplineId);
+        
+        const disciplineData = JSON.parse(JSON.stringify(discipline));
+
+        return {
+            ...disciplineData,
+            status,
+            // Add the enrolled class number to the response if the student is enrolled
+            enrolledClass: currentEnrollment ? currentEnrollment.classNumber : undefined
+        };
     });
 
     res.send(disciplinesWithStatus);
@@ -136,13 +148,19 @@ router.get('/:studentId/disciplines/:disciplineId', async (req, res) => {
     let status = 'not_taken';
     if (student.completedDisciplines.includes(discipline.disciplineId)) {
         status = 'completed';
-    } else if (student.currentDisciplines.includes(discipline.disciplineId)) {
+    } else if (student.currentDisciplines && student.currentDisciplines.some(enrollment => enrollment.disciplineId === discipline.disciplineId)) {
         status = 'in_progress';
     }
 
-    res.send({ ...JSON.parse(JSON.stringify(discipline)), status });
-});
+    const currentEnrollment = student.currentDisciplines?.find(enrollment => enrollment.disciplineId === discipline.disciplineId);
+    const disciplineData = JSON.parse(JSON.stringify(discipline));
 
+    res.send({
+        ...disciplineData,
+        status,
+        enrolledClass: currentEnrollment ? currentEnrollment.classNumber : undefined
+    });
+});
 
 /**
  * @swagger
@@ -327,9 +345,9 @@ router.delete('/:studentId/completed-disciplines/:disciplineId', async (req, res
 
 /**
  * @swagger
- * /students/{studentId}/current-disciplines/{disciplineId}:
+ * /students/{studentId}/current-disciplines/{disciplineId}/{classNumber}:
  *   put:
- *     summary: Adds a single currently-taken discipline to a student's record.
+ *     summary: Enrolls a student in a specific class of a discipline.
  *     parameters:
  *       - in: path
  *         name: studentId
@@ -341,32 +359,37 @@ router.delete('/:studentId/completed-disciplines/:disciplineId', async (req, res
  *         required: true
  *         schema:
  *           type: string
+ *       - in: path
+ *         name: classNumber
+ *         required: true
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
- *         description: Discipline added successfully.
+ *         description: Student enrolled successfully.
  *       404:
- *         description: Student not found.
+ *         description: Student or discipline not found.
  *       500:
- *         description: Error updating the student.
+ *         description: Error enrolling the student.
  */
-router.put('/:studentId/current-disciplines/:disciplineId', async (req, res) => {
-    const { studentId, disciplineId } = req.params;
+router.put('/:studentId/current-disciplines/:disciplineId/:classNumber', async (req, res) => {
+    const { studentId, disciplineId, classNumber } = req.params;
     try {
-        const result = await updateCurrentDisciplines({ studentId, add: [disciplineId] });
+        const result = await updateCurrentDisciplines({ studentId, disciplineId, classNumber, action: 'add' });
         if (result.matchedCount === 0) {
             return res.status(404).send({ error: 'Student not found' });
         }
-        res.status(200).send({ message: `Discipline ${disciplineId} added to student ${studentId}` });
+        res.status(200).send({ message: `Student ${studentId} enrolled in class ${classNumber} of discipline ${disciplineId}` });
     } catch (error) {
-        res.status(500).send({ error: 'Error updating the student', details: error.message });
+        res.status(500).send({ error: 'Error enrolling student', details: error.message });
     }
 });
 
 /**
  * @swagger
- * /students/{studentId}/current-disciplines/{disciplineId}:
+ * /students/{studentId}/current-disciplines/{disciplineId}/{classNumber}:
  *   delete:
- *     summary: Removes a single currently-taken discipline from a student's record.
+ *     summary: Removes a student's enrollment from a specific class.
  *     parameters:
  *       - in: path
  *         name: studentId
@@ -378,24 +401,29 @@ router.put('/:studentId/current-disciplines/:disciplineId', async (req, res) => 
  *         required: true
  *         schema:
  *           type: string
+ *       - in: path
+ *         name: classNumber
+ *         required: true
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
- *         description: Discipline removed successfully.
+ *         description: Enrollment removed successfully.
  *       404:
  *         description: Student not found.
  *       500:
- *         description: Error updating the student.
+ *         description: Error removing enrollment.
  */
-router.delete('/:studentId/current-disciplines/:disciplineId', async (req, res) => {
-    const { studentId, disciplineId } = req.params;
+router.delete('/:studentId/current-disciplines/:disciplineId/:classNumber', async (req, res) => {
+    const { studentId, disciplineId, classNumber } = req.params;
     try {
-        const result = await updateCurrentDisciplines({ studentId, remove: [disciplineId] });
+        const result = await updateCurrentDisciplines({ studentId, disciplineId, classNumber, action: 'remove' });
         if (result.matchedCount === 0) {
             return res.status(404).send({ error: 'Student not found' });
         }
-        res.status(200).send({ message: `Discipline ${disciplineId} removed from student ${studentId}` });
+        res.status(200).send({ message: `Enrollment in class ${classNumber} of discipline ${disciplineId} removed for student ${studentId}` });
     } catch (error) {
-        res.status(500).send({ error: 'Error updating the student', details: error.message });
+        res.status(500).send({ error: 'Error removing enrollment', details: error.message });
     }
 });
 
