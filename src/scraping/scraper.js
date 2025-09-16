@@ -96,7 +96,6 @@ async function scrapeDisciplines(matricula, senha) {
                 return {
                     name: tds[0].innerText.trim(),
                     period: tds[1].innerText.trim(),
-                    attended: tds[2].innerText.trim(),
                     type: tds[3].innerText.trim(),
                     ramification: tds[4].innerText.trim(),
                     credits: parseInt(tds[5].innerText.trim(), 10) || 0,

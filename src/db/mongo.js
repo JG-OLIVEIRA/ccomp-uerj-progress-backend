@@ -86,10 +86,12 @@ async function getDisciplineById(id) {
     }
 }
 
-async function createStudent({ studentId, completedDisciplines }) {
+async function createStudent({ studentId, name, lastName, completedDisciplines }) {
     try {
         const studentData = {
             studentId,
+            name,
+            lastName,
             completedDisciplines: completedDisciplines || [],
             currentDisciplines: []
         };
@@ -111,7 +113,7 @@ async function getStudentById(studentId) {
     }
 }
 
-async function updateStudent({ studentId, add, remove }) {
+async function updateCompletedDisciplines({ studentId, add, remove }) {
     try {
         if ((!add || add.length === 0) && (!remove || remove.length === 0)) {
             console.log(`No changes for student ${studentId}`);
@@ -155,16 +157,41 @@ async function updateStudent({ studentId, add, remove }) {
     }
 }
 
-async function updateCurrentDisciplines({ studentId, disciplines }) {
+async function updateCurrentDisciplines({ studentId, add, remove }) {
     try {
-        const invalidIds = disciplines.filter(id => typeof id !== 'string' || !/^[\w-]+$/.test(id));
+        if ((!add || add.length === 0) && (!remove || remove.length === 0)) {
+            console.log(`No changes for student ${studentId}`);
+            return { matchedCount: 1, modifiedCount: 0 };
+        }
+
+        const allDisciplineIds = (add || []).concat(remove || []);
+        const invalidIds = allDisciplineIds.filter(id => typeof id !== 'string' || !/^[\w-]+$/.test(id));
+
         if (invalidIds.length > 0) {
             throw new Error(`Invalid discipline IDs: ${invalidIds.join(', ')}`);
         }
 
+        let disciplinesExpr = { $ifNull: ["$currentDisciplines", []] };
+
+        if (add && add.length > 0) {
+            disciplinesExpr = { $setUnion: [disciplinesExpr, add] };
+        }
+
+        if (remove && remove.length > 0) {
+            disciplinesExpr = {
+                $filter: {
+                    input: disciplinesExpr,
+                    as: "discipline",
+                    cond: { $not: { $in: ["$$discipline", remove] } }
+                }
+            };
+        }
+
+        const updatePipeline = [{ $set: { currentDisciplines: disciplinesExpr } }];
+
         const result = await studentsCollection.updateOne(
             { studentId: studentId },
-            { $set: { currentDisciplines: disciplines } }
+            updatePipeline
         );
         console.log(`Student ${studentId} current disciplines updated.`);
         return result;
@@ -199,4 +226,4 @@ async function deleteStudent(studentId) {
     }
 }
 
-export { initMongo, upsertDiscipline, getAllDisciplines, getDisciplineById, createStudent, getStudentById, updateStudent, updateWhatsappGroup, updateCurrentDisciplines, deleteStudent };
+export { initMongo, upsertDiscipline, getAllDisciplines, getDisciplineById, createStudent, getStudentById, updateCompletedDisciplines, updateWhatsappGroup, updateCurrentDisciplines, deleteStudent };

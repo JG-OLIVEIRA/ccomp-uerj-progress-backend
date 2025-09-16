@@ -17,6 +17,16 @@ const options = {
                             description: "The student's ID.",
                             example: '20201010101'
                         },
+                        name: {
+                            type: 'string',
+                            description: "The student's name.",
+                            example: 'John'
+                        },
+                        lastName: {
+                            type: 'string',
+                            description: "The student's last name.",
+                            example: 'Doe'
+                        },
                         completedDisciplines: {
                             type: 'array',
                             items: {
@@ -40,7 +50,6 @@ const options = {
                     properties: {
                         name: { type: 'string' },
                         period: { type: 'string' },
-                        attended: { type: 'string' },
                         type: { type: 'string' },
                         ramification: { type: 'string' },
                         credits: { type: 'string' },
