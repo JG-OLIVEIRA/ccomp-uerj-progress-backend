@@ -1,6 +1,6 @@
 import express from 'express';
 import { getAllDisciplines, getDisciplineById, updateWhatsappGroup } from '../db/mongo.js';
-import { scrapeDisciplines } from '../scraping/scraper.js';
+import { scrapeDisciplines, scrapeWhatsappLinks } from '../scraping/scraper.js';
 import 'dotenv/config';
 
 const router = express.Router();
@@ -114,6 +114,21 @@ router.post('/actions/scrape', async (req, res) => {
     // Fire and forget: start the process but don't wait for it to finish
     scrapeDisciplines(process.env.UERJ_MATRICULA, process.env.UERJ_SENHA);
     res.status(202).send({ message: 'Discipline scraping process started.' });
+});
+
+/**
+ * @swagger
+ * /disciplines/actions/scrape-whatsapp:
+ *   post:
+ *     summary: Forces an update of the WhatsApp group links by scraping a public HackMD page.
+ *     responses:
+ *       202:
+ *         description: WhatsApp link scraping process started.
+ */
+router.post('/actions/scrape-whatsapp', async (req, res) => {
+    // Fire and forget: start the process but don't wait for it to finish
+    scrapeWhatsappLinks();
+    res.status(202).send({ message: 'WhatsApp link scraping process started.' });
 });
 
 /**

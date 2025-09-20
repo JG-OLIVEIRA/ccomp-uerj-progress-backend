@@ -1,7 +1,8 @@
 import puppeteer from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
-import { upsertDiscipline } from '../db/mongo.js';
+import { upsertDiscipline, getAllDisciplines, updateWhatsappGroup } from '../db/mongo.js';
 
+// (existing parseClass function remains the same)
 function parseClass(classStr) {
     const classObj = {
         number: null,
@@ -175,4 +176,79 @@ async function scrapeDisciplines(matricula, senha) {
     return disciplines;
 }
 
-export { scrapeDisciplines };
+async function scrapeWhatsappLinks() {
+    console.log('Starting WhatsApp link scraping...');
+    const allDisciplines = await getAllDisciplines();
+    const disciplineNameToId = allDisciplines.reduce((acc, disc) => {
+        // Normalize name for better matching
+        const normalizedName = disc.name.trim().toUpperCase();
+        acc[normalizedName] = disc.disciplineId;
+        return acc;
+    }, {});
+
+    const browser = await puppeteer.launch({
+        args: chromium.args,
+        defaultViewport: chromium.defaultViewport,
+        executablePath: await chromium.executablePath(),
+        headless: chromium.headless,
+    });
+    const page = await browser.newPage();
+    await page.goto('https://hackmd.io/wwS9DYAOR7ez37Oj6ygYcQ', { waitUntil: 'networkidle2' });
+
+    const linksToUpdate = await page.evaluate(() => {
+        const updates = [];
+        const disciplineHeaders = document.querySelectorAll('h3');
+
+        disciplineHeaders.forEach(header => {
+            const disciplineName = header.textContent.trim().toUpperCase();
+            let sibling = header.nextElementSibling;
+
+            // Find the next UL element which contains the class links
+            while (sibling && sibling.tagName !== 'UL') {
+                sibling = sibling.nextElementSibling;
+            }
+
+            if (sibling && sibling.tagName === 'UL') {
+                const listItems = sibling.querySelectorAll('li');
+                listItems.forEach(item => {
+                    const link = item.querySelector('a');
+                    const classMatch = item.textContent.match(/Turma\s*(\d+)/i);
+                    if (link && classMatch) {
+                        const whatsappGroup = link.href;
+                        const classNumber = classMatch[1];
+                        updates.push({ disciplineName, classNumber, whatsappGroup });
+                    }
+                });
+            }
+        });
+        return updates;
+    });
+
+    await browser.close();
+
+    console.log(`Found ${linksToUpdate.length} potential links to update.`);
+
+    let updatedCount = 0;
+    for (const link of linksToUpdate) {
+        const disciplineId = disciplineNameToId[link.disciplineName];
+        if (disciplineId) {
+            try {
+                await updateWhatsappGroup({ 
+                    disciplineId, 
+                    classNumber: link.classNumber, 
+                    whatsappGroup: link.whatsappGroup 
+                });
+                updatedCount++;
+                console.log(`Successfully updated WhatsApp group for ${link.disciplineName}, Class ${link.classNumber}`);
+            } catch (error) {
+                console.error(`Error updating ${link.disciplineName}, Class ${link.classNumber}:`, error);
+            }
+        } else {
+            console.warn(`Could not find discipline ID for name: "${link.disciplineName}"`);
+        }
+    }
+    console.log(`Finished scraping. Updated ${updatedCount} links.`);
+    return { totalFound: linksToUpdate.length, totalUpdated: updatedCount };
+}
+
+export { scrapeDisciplines, scrapeWhatsappLinks };
